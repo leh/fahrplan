@@ -3,6 +3,11 @@ addEventListener('fetch', event => {
 });
 
 async function handleRequest(request) {
+  // Prevent potential loop if the script is somehow called by itself
+  if (request.headers.get('x-bunny-edge-script')) {
+     return new Response('Loop detected', { status: 508 });
+  }
+
   const url = new URL(request.url);
   
   const corsHeaders = {
@@ -23,7 +28,7 @@ async function handleRequest(request) {
     if (dateParam) {
       searchDate = new Date(dateParam);
       if (isNaN(searchDate.getTime())) {
-         return new Response(JSON.stringify({ error: "Invalid date format. Use ISO 8601 (e.g. 2026-01-11T12:00:00Z)" }), { 
+         return new Response(JSON.stringify({ error: "Invalid date format. Use ISO 8601" }), { 
              status: 400, 
              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
          });
@@ -72,19 +77,21 @@ async function handleRequest(request) {
       "departure": "1"
     };
 
+    // Use a clean fetch with explicit headers and no redirect following to be safe
     const swbResponse = await fetch('https://swb-mobil.de/api/v1/journeys/ass?locale=de-de', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'User-Agent': 'BunnyEdgeScript/1.0',
-        'Accept': 'application/json'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'application/json',
+        'x-bunny-edge-script': 'true' // Mark the request
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      redirect: 'manual'
     });
 
     if (!swbResponse.ok) {
-       const text = await swbResponse.text();
-       return new Response(JSON.stringify({ error: `Upstream API Error: ${swbResponse.status}`, details: text.substring(0, 200) }), {
+       return new Response(JSON.stringify({ error: `Upstream API Error: ${swbResponse.status}` }), {
            status: 502,
            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
        });
@@ -99,18 +106,11 @@ async function handleRequest(request) {
             const lineName = firstLeg && firstLeg.product ? firstLeg.product.name : "";
             
             if (lineName === '61') {
-                 const departureTimestamp = journey.departure; 
-                 const arrivalTimestamp = journey.arrival; 
-                 const delay = journey.delay || 0;
-                 
-                 const depDate = new Date(departureTimestamp * 1000);
-                 const arrDate = new Date(arrivalTimestamp * 1000);
-                 
                  results.push({
-                     departure: depDate.toISOString(),
-                     arrival: arrDate.toISOString(),
-                     duration: Math.round((arrivalTimestamp - departureTimestamp) / 60) + ' min',
-                     delay: delay, 
+                     departure: new Date(journey.departure * 1000).toISOString(),
+                     arrival: new Date(journey.arrival * 1000).toISOString(),
+                     duration: Math.round((journey.arrival - journey.departure) / 60) + ' min',
+                     delay: journey.delay || 0, 
                      line: lineName,
                      transfers: journey.changes,
                      destination: "Königstr. (Bonn)"
@@ -121,11 +121,7 @@ async function handleRequest(request) {
     }
 
     return new Response(JSON.stringify({
-        meta: {
-            requested_date_utc: searchDate.toISOString(),
-            limit: limit,
-            source: "SWB API proxy"
-        },
+        meta: { requested_date_utc: searchDate.toISOString(), limit: limit },
         departures: results
     }, null, 2), {
       status: 200,
