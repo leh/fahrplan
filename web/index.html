@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Fahrplan 61</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --accent: #38bdf8;
+            --accent-glow: rgba(56, 189, 248, 0.2);
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        header {
+            width: 100%;
+            padding: 2rem 1.5rem;
+            background: linear-gradient(to bottom, rgba(30, 41, 59, 0.5), transparent);
+            text-align: center;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: -0.025em;
+            color: var(--accent);
+            text-transform: uppercase;
+        }
+
+        .location {
+            font-size: 0.875rem;
+            color: var(--text-dim);
+            margin-top: 0.25rem;
+        }
+
+        #app {
+            width: 100%;
+            max-width: 500px;
+            padding: 1rem;
+            flex-grow: 1;
+        }
+
+        .departure-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .departure-card {
+            background-color: var(--card-bg);
+            padding: 1.25rem;
+            border-radius: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: transform 0.2s ease, opacity 0.5s ease;
+            animation: slideIn 0.4s ease-out forwards;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .time-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .time {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--text-main);
+        }
+
+        .delay {
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .delay.on-time { color: var(--success); }
+        .delay.late { color: var(--danger); }
+
+        .info-group {
+            text-align: right;
+        }
+
+        .line-badge {
+            background-color: var(--accent);
+            color: #000;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            font-weight: 800;
+            font-size: 0.875rem;
+            margin-bottom: 0.25rem;
+            display: inline-block;
+        }
+
+        .destination {
+            font-size: 0.875rem;
+            color: var(--text-dim);
+            font-weight: 600;
+        }
+
+        .loading-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            background: var(--accent);
+            width: 0%;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px var(--accent);
+        }
+
+        .footer {
+            padding: 2rem;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            text-align: center;
+        }
+
+        .refresh-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: all 0.2s ease;
+        }
+
+        .refresh-btn:active {
+            transform: scale(0.95);
+            background: var(--accent);
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-bar" id="loader"></div>
+    
+    <header>
+        <h1>Linie 61</h1>
+        <div class="location">Auerberger Mitte &rarr; Königstr.</div>
+    </header>
+
+    <main id="app">
+        <div id="list" class="departure-list">
+            <!-- Data will be injected here -->
+        </div>
+        <center>
+            <button class="refresh-btn" onclick="update()">Jetzt aktualisieren</button>
+        </center>
+    </main>
+
+    <div class="footer" id="status">
+        Lade Abfahrten...
+    </div>
+
+    <script>
+        const API_URL = 'https://fahrplan-oynwk.bunny.run/';
+        const listElement = document.getElementById('list');
+        const statusElement = document.getElementById('status');
+        const loader = document.getElementById('loader');
+
+        async function update() {
+            loader.style.width = '30%';
+            try {
+                const response = await fetch(API_URL);
+                if (!response.ok) throw new Error('Netzwerk-Fehler');
+                
+                const data = await response.json();
+                render(data.departures);
+                
+                const now = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                statusElement.innerText = `Zuletzt aktualisiert: ${now}`;
+                loader.style.width = '100%';
+                setTimeout(() => loader.style.width = '0%', 400);
+            } catch (error) {
+                statusElement.innerText = 'Fehler beim Laden der Daten.';
+                loader.style.width = '0%';
+            }
+        }
+
+        function render(departures) {
+            if (!departures || departures.length === 0) {
+                listElement.innerHTML = '<div class="location">Keine Abfahrten gefunden.</div>';
+                return;
+            }
+
+            // Using a simple transition by clearing and refilling
+            // In a real app we would diff the elements
+            listElement.innerHTML = '';
+            
+            departures.forEach((dep, index) => {
+                const time = new Date(dep.departure).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                const isLate = dep.delay > 0;
+                
+                const card = document.createElement('div');
+                card.className = 'departure-card';
+                card.style.animationDelay = `${index * 0.1}s`;
+                
+                card.innerHTML = `
+                    <div class="time-group">
+                        <div class="time">${time}</div>
+                        <div class="delay ${isLate ? 'late' : 'on-time'}">
+                            ${isLate ? `+${dep.delay} min` : 'Pünktlich'}
+                        </div>
+                    </div>
+                    <div class="info-group">
+                        <div class="line-badge">${dep.line}</div>
+                        <div class="destination">${dep.destination}</div>
+                    </div>
+                `;
+                listElement.appendChild(card);
+            });
+        }
+
+        // Initial load
+        update();
+
+        // Refresh every 60 seconds
+        setInterval(update, 60000);
+    </script>
+</body>
+</html>
