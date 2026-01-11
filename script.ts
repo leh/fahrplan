@@ -89,13 +89,15 @@ async function handleRequest(request) {
     const swbResponse = await fetch('https://swb-mobil.de/api/v1/journeys/ass?locale=de-de', {
       method: 'POST',
       headers: {
+        'Host': 'swb-mobil.de',
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:146.0) Gecko/20100101 Firefox/146.0',
         'Accept': 'application/json, text/plain, */*',
         'Accept-Language': 'de,en-US;q=0.7,en;q=0.3',
         'Content-Type': 'application/json',
         'Referer': 'https://www.swb-mobil.de/',
         'Origin': 'https://www.swb-mobil.de',
-        'Cache-Control': 'no-cache'
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive'
       },
       body: JSON.stringify(payload)
     });
