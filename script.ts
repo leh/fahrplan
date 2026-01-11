@@ -5,29 +5,19 @@ addEventListener('fetch', event => {
 async function handleRequest(request) {
   const url = new URL(request.url);
   
-  // CORS headers
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
   };
 
-  // Handle preflight
   if (request.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // 1. Parse Parameters
     const dateParam = url.searchParams.get('date');
     const limitParam = url.searchParams.get('limit');
-    
-    // Date Logic:
-    // If dateParam is provided, parse it.
-    // If not provided, use new Date() which is "now" (UTC on server).
-    // Note: new Date('2026-01-01T12:00') without Z might be interpreted variously.
-    // We assume ISO 8601. If the user omits Z, JS Date usually treats it as UTC in standard environments (like Deno/V8),
-    // but explicit Z is safer.
     
     let searchDate;
     if (dateParam) {
@@ -44,8 +34,6 @@ async function handleRequest(request) {
 
     const limit = limitParam ? parseInt(limitParam, 10) : 6;
 
-    // 2. Construct Upstream Payload
-    // Fixed IDs for Auerberger Mitte -> Königstr.
     const payload = {
       "origin": {
         "@ID": "7201",
@@ -84,56 +72,42 @@ async function handleRequest(request) {
       "departure": "1"
     };
 
-    // 3. Fetch from SWB API
-    // We use the same headers as the working curl request to behave like a browser
     const swbResponse = await fetch('https://swb-mobil.de/api/v1/journeys/ass?locale=de-de', {
       method: 'POST',
       headers: {
-        'Host': 'swb-mobil.de',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:146.0) Gecko/20100101 Firefox/146.0',
-        'Accept': 'application/json, text/plain, */*',
-        'Accept-Language': 'de,en-US;q=0.7,en;q=0.3',
         'Content-Type': 'application/json',
-        'Referer': 'https://www.swb-mobil.de/',
-        'Origin': 'https://www.swb-mobil.de',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive'
+        'User-Agent': 'BunnyEdgeScript/1.0',
+        'Accept': 'application/json'
       },
       body: JSON.stringify(payload)
     });
 
     if (!swbResponse.ok) {
-       // Pass through upstream errors or handle them
        const text = await swbResponse.text();
-       return new Response(JSON.stringify({ error: `Upstream API Error: ${swbResponse.status}`, details: text }), {
-           status: 502, // Bad Gateway
+       return new Response(JSON.stringify({ error: `Upstream API Error: ${swbResponse.status}`, details: text.substring(0, 200) }), {
+           status: 502,
            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
        });
     }
 
     const data = await swbResponse.json();
     
-    // 4. Process & Filter Data
     const results = [];
     if (data.data) {
         for (const journey of data.data) {
-            // Filter logic: Must start with Line 61
             const firstLeg = journey.legs && journey.legs[0];
             const lineName = firstLeg && firstLeg.product ? firstLeg.product.name : "";
             
-            // "61" is the expected name for the tram
             if (lineName === '61') {
-                 // API returns timestamps in seconds (Unix Epoch)
-                 // These are absolute and UTC-based.
                  const departureTimestamp = journey.departure; 
                  const arrivalTimestamp = journey.arrival; 
-                 const delay = journey.delay || 0; // usually minutes or 0
+                 const delay = journey.delay || 0;
                  
                  const depDate = new Date(departureTimestamp * 1000);
                  const arrDate = new Date(arrivalTimestamp * 1000);
                  
                  results.push({
-                     departure: depDate.toISOString(), // Output as ISO UTC string
+                     departure: depDate.toISOString(),
                      arrival: arrDate.toISOString(),
                      duration: Math.round((arrivalTimestamp - departureTimestamp) / 60) + ' min',
                      delay: delay, 
@@ -142,13 +116,10 @@ async function handleRequest(request) {
                      destination: "Königstr. (Bonn)"
                  });
             }
-            
             if (results.length >= limit) break;
         }
     }
 
-    // 5. Response
-    // Cache for 60 seconds to allow near-realtime updates but prevent abuse
     return new Response(JSON.stringify({
         meta: {
             requested_date_utc: searchDate.toISOString(),
@@ -166,7 +137,7 @@ async function handleRequest(request) {
     });
 
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: error.message, stack: error.stack }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
