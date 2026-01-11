@@ -75,5 +75,5 @@ Die API antwortet mit `application/json`. Alle Zeitangaben sind **UTC** (ISO 860
 - Clients sollten die Daten maximal 60 Sekunden cachen, um Echtzeit-Informationen zu gewährleisten.
 
 ## Wartung
-Die Logik befindet sich in `edge_function.js`.
+Die Logik befindet sich in `script.ts`.
 Die IDs für Start- und Zielhaltestelle sind im Code hartkodiert (`Stop_7201` und `Stop_1073`). Sollten sich diese ändern, müssen sie im `payload` Objekt aktualisiert werden.
