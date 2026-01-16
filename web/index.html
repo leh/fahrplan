@@ -2,20 +2,40 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0a0f1a">
     <title>Fahrplan 61</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
-            --text-main: #f8fafc;
-            --text-dim: #94a3b8;
-            --accent: #38bdf8;
-            --accent-glow: rgba(56, 189, 248, 0.2);
-            --success: #22c55e;
-            --warning: #f59e0b;
-            --danger: #ef4444;
+            --bg-deep: #050a14;
+            --bg-gradient-start: #0a0f1a;
+            --bg-gradient-end: #1a2236;
+            
+            /* Glass Surface */
+            --glass-surface: rgba(20, 30, 50, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.12);
+            --glass-highlight: rgba(255, 255, 255, 0.05);
+            
+            /* Text */
+            --text-primary: #ffffff;
+            --text-secondary: #a0aec0;
+            
+            /* Accents */
+            --accent-blue: #3b82f6;
+            --accent-blue-glow: rgba(59, 130, 246, 0.4);
+            --accent-gold: #fbbf24;
+            
+            /* Status */
+            --success: #34d399;
+            --success-bg: rgba(52, 211, 153, 0.15);
+            --danger: #f87171;
+            --danger-bg: rgba(248, 113, 113, 0.15);
+            
+            --safe-top: env(safe-area-inset-top, 20px);
+            --safe-bottom: env(safe-area-inset-bottom, 20px);
         }
 
         * {
@@ -23,234 +43,491 @@
             -webkit-tap-highlight-color: transparent;
         }
 
+        html {
+            background-color: var(--bg-deep);
+            height: 100%;
+        }
+
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
+            font-family: "Sora", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
-            padding: 0;
+            height: 100%;
+            color: var(--text-primary);
+            background: 
+                radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.15), transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(251, 191, 36, 0.08), transparent 40%),
+                linear-gradient(to bottom, var(--bg-gradient-start), var(--bg-gradient-end));
+            background-attachment: fixed;
+            overflow: hidden; /* Prevent body scroll, we handle it in .app */
+        }
+
+        /* Subtle grid pattern overlay */
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .app {
+            position: relative;
+            z-index: 1;
             display: flex;
             flex-direction: column;
+            height: 100%;
+            max-width: 640px;
+            margin: 0 auto;
+        }
+
+        /* Header Area */
+        .header {
+            padding-top: max(var(--safe-top), 1rem);
+            padding-bottom: 1rem;
+            padding-left: 1.25rem;
+            padding-right: 1.25rem;
+            background: linear-gradient(180deg, rgba(10, 15, 26, 0.8) 0%, rgba(10, 15, 26, 0) 100%);
+            flex-shrink: 0;
+        }
+
+        .route-card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 1rem 1.25rem;
+            display: flex;
             align-items: center;
-            min-height: 100vh;
+            justify-content: space-between;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
         }
 
-        header {
-            width: 100%;
-            padding: 2rem 1.5rem;
-            background: linear-gradient(to bottom, rgba(30, 41, 59, 0.5), transparent);
-            text-align: center;
+        .route-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
         }
 
-        h1 {
-            margin: 0;
-            font-size: 1.5rem;
-            font-weight: 800;
-            letter-spacing: -0.025em;
-            color: var(--accent);
+        .line-badge {
+            background: var(--accent-blue);
+            color: white;
+            font-weight: 700;
+            font-size: 1.1rem;
+            padding: 0.35rem 0.85rem;
+            border-radius: 14px;
+            box-shadow: 0 4px 12px var(--accent-blue-glow);
+        }
+
+        .direction {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .direction-label {
+            font-size: 0.75rem;
             text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            font-weight: 600;
         }
 
-        .location {
-            font-size: 0.875rem;
-            color: var(--text-dim);
-            margin-top: 0.25rem;
+        .direction-value {
+            font-weight: 700;
+            font-size: 1.05rem;
+            letter-spacing: -0.01em;
         }
 
-        #app {
-            width: 100%;
-            max-width: 500px;
-            padding: 1rem;
-            flex-grow: 1;
+        .live-clock {
+            font-variant-numeric: tabular-nums;
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            background: rgba(0,0,0,0.2);
+            padding: 0.25rem 0.6rem;
+            border-radius: 8px;
         }
 
-        .departure-list {
+        /* Main List Area */
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 0 1.25rem;
+            padding-bottom: calc(var(--safe-bottom) + 4rem); /* Space for footer */
+            scrollbar-width: none; /* Hide scrollbar Firefox */
+        }
+        
+        .content::-webkit-scrollbar {
+            display: none; /* Hide scrollbar Chrome/Safari */
+        }
+
+        .section-title {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            margin: 1rem 0 0.75rem 0.5rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .refresh-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--accent-gold);
+            border-top-color: transparent;
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .refresh-spinner.spinning {
+            opacity: 1;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .departures-list {
             display: flex;
             flex-direction: column;
             gap: 0.75rem;
         }
 
-        .departure-card {
-            background-color: var(--card-bg);
-            padding: 1.25rem;
-            border-radius: 1rem;
-            display: flex;
+        .card {
+            background: var(--glass-surface);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 1rem 1.25rem;
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 1rem;
             align-items: center;
-            justify-content: space-between;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            transition: transform 0.2s ease, opacity 0.5s ease;
-            animation: slideIn 0.4s ease-out forwards;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s, background 0.2s;
+            animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
         }
-
+        
+        .card:active {
+            transform: scale(0.98);
+            background: rgba(30, 45, 70, 0.75);
+        }
+        
         @keyframes slideIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from { opacity: 0; transform: translateY(20px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
-        .time-group {
+        .time-box {
             display: flex;
             flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.2);
+            padding: 0.5rem 0.75rem;
+            border-radius: 14px;
+            min-width: 80px;
         }
 
-        .time {
+        .time-main {
             font-size: 1.5rem;
-            font-weight: 800;
-            color: var(--text-main);
+            font-weight: 700;
+            line-height: 1;
+            letter-spacing: -0.02em;
+        }
+        
+        .time-sub {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
         }
 
-        .delay {
-            font-size: 0.875rem;
-            font-weight: 600;
+        .details {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+        
+        .status-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
         }
 
-        .delay.on-time { color: var(--success); }
-        .delay.late { color: var(--danger); }
-
-        .info-group {
-            text-align: right;
+        .badge {
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 0.25rem 0.6rem;
+            border-radius: 99px;
+            letter-spacing: 0.02em;
         }
 
-        .line-badge {
-            background-color: var(--accent);
-            color: #000;
-            padding: 0.25rem 0.5rem;
-            border-radius: 0.375rem;
-            font-weight: 800;
-            font-size: 0.875rem;
-            margin-bottom: 0.25rem;
-            display: inline-block;
+        .badge.ontime {
+            background: var(--success-bg);
+            color: var(--success);
         }
 
-        .destination {
-            font-size: 0.875rem;
-            color: var(--text-dim);
-            font-weight: 600;
+        .badge.late {
+            background: var(--danger-bg);
+            color: var(--danger);
+        }
+        
+        .meta-info {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            display: flex;
+            gap: 0.75rem;
+        }
+        
+        .meta-info span {
+            position: relative;
+        }
+        
+        .meta-info span:not(:last-child)::after {
+            content: "•";
+            position: absolute;
+            right: -0.45rem;
+            opacity: 0.5;
         }
 
-        .loading-bar {
+        /* Footer / Status Bar */
+        .footer-status {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 1rem;
+            padding-bottom: max(var(--safe-bottom), 1rem);
+            background: linear-gradient(0deg, var(--bg-deep) 40%, transparent 100%);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .status-text {
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(10px);
+            padding: 0.3rem 0.8rem;
+            border-radius: 99px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        /* Progress Line */
+        .progress-container {
             position: fixed;
             top: 0;
             left: 0;
+            right: 0;
             height: 3px;
-            background: var(--accent);
+            z-index: 100;
+            pointer-events: none;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-gold), var(--accent-blue));
             width: 0%;
-            transition: width 0.3s ease;
-            box-shadow: 0 0 10px var(--accent);
+            transition: width 0.1s linear;
+            box-shadow: 0 0 10px var(--accent-blue);
         }
 
-        .footer {
-            padding: 2rem;
-            font-size: 0.75rem;
-            color: var(--text-dim);
+        .empty-state {
             text-align: center;
-        }
-
-        .refresh-btn {
-            background: var(--card-bg);
-            border: 1px solid var(--accent);
-            color: var(--accent);
-            padding: 0.5rem 1rem;
-            border-radius: 2rem;
-            font-size: 0.75rem;
-            font-weight: 600;
-            cursor: pointer;
+            padding: 3rem 1rem;
+            color: var(--text-secondary);
+            background: rgba(255,255,255,0.03);
+            border-radius: 20px;
             margin-top: 1rem;
-            transition: all 0.2s ease;
+            border: 1px dashed rgba(255,255,255,0.1);
         }
 
-        .refresh-btn:active {
-            transform: scale(0.95);
-            background: var(--accent);
-            color: #000;
-        }
     </style>
 </head>
 <body>
-    <div class="loading-bar" id="loader"></div>
-    
-    <header>
-        <h1>Linie 61</h1>
-        <div class="location">Auerberger Mitte &rarr; Königstr.</div>
-    </header>
-
-    <main id="app">
-        <div id="list" class="departure-list">
-            <!-- Data will be injected here -->
-        </div>
-        <center>
-            <button class="refresh-btn" onclick="update()">Jetzt aktualisieren</button>
-        </center>
-    </main>
-
-    <div class="footer" id="status">
-        Lade Abfahrten...
+    <div class="progress-container">
+        <div id="progress-bar" class="progress-bar"></div>
     </div>
+
+    <main class="app">
+        <header class="header">
+            <div class="route-card">
+                <div class="route-info">
+                    <div class="line-badge">61</div>
+                    <div class="direction">
+                        <span class="direction-label">Auerberger Mitte →</span>
+                        <span class="direction-value">Königstr.</span>
+                    </div>
+                </div>
+                <div class="live-clock" id="clock">--:--</div>
+            </div>
+        </header>
+
+        <div class="content">
+            <div class="section-title">
+                <span>Nächste Abfahrten</span>
+                <div id="refresh-spinner" class="refresh-spinner"></div>
+            </div>
+            
+            <div id="list" class="departures-list">
+                <!-- Items injected here -->
+            </div>
+        </div>
+
+        <footer class="footer-status">
+            <span class="status-text" id="status">Warte auf Daten...</span>
+        </footer>
+    </main>
 
     <script>
         const API_URL = 'https://fahrplan-oynwk.bunny.run/';
+        const REFRESH_MS = 30000;
+        const MAX_ITEMS = 20;
+
         const listElement = document.getElementById('list');
         const statusElement = document.getElementById('status');
-        const loader = document.getElementById('loader');
+        const clockElement = document.getElementById('clock');
+        const progressBar = document.getElementById('progress-bar');
+        const refreshSpinner = document.getElementById('refresh-spinner');
+
+        let nextRefreshAt = Date.now() + REFRESH_MS;
+        let isFetching = false;
+
+        function formatTime(date) {
+            return date.toLocaleTimeString('de-DE', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        function formatDuration(str) {
+            // "15min" -> "15 min"
+            return str.replace(/(\d+)([a-z]+)/i, '$1 $2');
+        }
+
+        function updateClock() {
+            clockElement.textContent = formatTime(new Date());
+        }
+
+        function setFetching(active) {
+            isFetching = active;
+            if(active) {
+                refreshSpinner.classList.add('spinning');
+                statusElement.textContent = 'Aktualisiere...';
+            } else {
+                refreshSpinner.classList.remove('spinning');
+            }
+        }
+
+        function updateProgress() {
+            if (isFetching) {
+                progressBar.style.width = '100%';
+                progressBar.style.opacity = '0.5';
+                return;
+            }
+            const remaining = Math.max(0, nextRefreshAt - Date.now());
+            const ratio = 1 - (remaining / REFRESH_MS); // Grow from 0 to 100
+            progressBar.style.width = `${ratio * 100}%`;
+            progressBar.style.opacity = '1';
+        }
 
         async function update() {
-            loader.style.width = '30%';
+            if (isFetching) return;
+            setFetching(true);
+            
             try {
-                const response = await fetch(API_URL);
-                if (!response.ok) throw new Error('Netzwerk-Fehler');
-                
+                // Minimum loading time for visual feedback
+                const [response] = await Promise.all([
+                    fetch(API_URL),
+                    new Promise(r => setTimeout(r, 600))
+                ]);
+
+                if (!response.ok) throw new Error('API Error');
                 const data = await response.json();
-                render(data.departures);
-                
-                const now = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-                statusElement.innerText = `Zuletzt aktualisiert: ${now}`;
-                loader.style.width = '100%';
-                setTimeout(() => loader.style.width = '0%', 400);
+                render(data.departures || []);
+                statusElement.textContent = `Aktuell • ${formatTime(new Date())}`;
             } catch (error) {
-                statusElement.innerText = 'Fehler beim Laden der Daten.';
-                loader.style.width = '0%';
+                console.error(error);
+                statusElement.textContent = 'Verbindungsfehler';
+            } finally {
+                setFetching(false);
+                nextRefreshAt = Date.now() + REFRESH_MS;
             }
         }
 
         function render(departures) {
             if (!departures || departures.length === 0) {
-                listElement.innerHTML = '<div class="location">Keine Abfahrten gefunden.</div>';
+                listElement.innerHTML = `
+                    <div class="empty-state">
+                        <div>Keine Abfahrten in nächster Zeit.</div>
+                    </div>`;
                 return;
             }
 
-            // Using a simple transition by clearing and refilling
-            // In a real app we would diff the elements
-            listElement.innerHTML = '';
-            
-            departures.forEach((dep, index) => {
-                const time = new Date(dep.departure).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-                const isLate = dep.delay > 0;
+            const html = departures.slice(0, MAX_ITEMS).map((dep, index) => {
+                const time = new Date(dep.departure);
+                const delay = Number(dep.delay || 0);
+                const transfers = dep.transfers || 0;
+                const duration = dep.duration || '';
                 
-                const card = document.createElement('div');
-                card.className = 'departure-card';
-                card.style.animationDelay = `${index * 0.1}s`;
+                const isLate = delay > 0;
+                const badgeClass = isLate ? 'late' : 'ontime';
+                const badgeText = isLate ? `+${delay} min` : 'Pünktlich';
                 
-                card.innerHTML = `
-                    <div class="time-group">
-                        <div class="time">${time}</div>
-                        <div class="delay ${isLate ? 'late' : 'on-time'}">
-                            ${isLate ? `+${dep.delay} min` : 'Pünktlich'}
+                // Stagger animation
+                const style = `animation-delay: ${index * 0.05}s`;
+
+                return `
+                <div class="card" style="${style}">
+                    <div class="time-box">
+                        <div class="time-main">${formatTime(time)}</div>
+                        <div class="time-sub">Abfahrt</div>
+                    </div>
+                    <div class="details">
+                        <div class="status-row">
+                            <span class="badge ${badgeClass}">${badgeText}</span>
+                        </div>
+                        <div class="meta-info">
+                            <span>${transfers === 0 ? 'Direkt' : transfers + ' Umstieg(e)'}</span>
+                            <span>${formatDuration(duration)}</span>
                         </div>
                     </div>
-                    <div class="info-group">
-                        <div class="line-badge">${dep.line}</div>
-                        <div class="destination">${dep.destination}</div>
-                    </div>
+                </div>
                 `;
-                listElement.appendChild(card);
-            });
+            }).join('');
+            
+            // Only update if changed to avoid jitter (simple check)
+            if(listElement.innerHTML !== html) {
+                listElement.innerHTML = html;
+            }
         }
 
-        // Initial load
+        // Init
+        updateClock();
         update();
 
-        // Refresh every 60 seconds
-        setInterval(update, 60000);
+        // Loop
+        setInterval(() => {
+            updateClock();
+            updateProgress();
+            
+            if (!isFetching && Date.now() >= nextRefreshAt) {
+                update();
+            }
+        }, 100); // Higher fps for smoother progress bar
     </script>
 </body>
 </html>

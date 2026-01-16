@@ -30,7 +30,11 @@ Diese Dokumentation beschreibt, wie die Abfahrtsdaten auf einem Raspberry Pi Pic
 #### Option B: mpremote (CLI für Profis)
 ```bash
 # mpremote installieren
-pip install mpremote
+# mit pipx (empfohlen, wenn kein pip vorhanden)
+pipx install mpremote
+
+# alternativ mit pip (falls verfügbar)
+# pip install mpremote
 
 # Dateien kopieren
 mpremote cp wifi_secrets.py :
@@ -40,32 +44,63 @@ mpremote cp hardware/main.py : main.py
 mpremote reset
 ```
 
+Tipp: Alternativ gibt es ein fertiges Script, das die Dateien kopiert und den Pico resetet:
+```bash
+./hardware/upload_mpremote.sh
+```
+
 ### 3. WLAN-Konfiguration
-Erstelle eine Datei `wifi_secrets.py` auf dem Pico:
+Erstelle eine Datei `wifi_secrets.py` auf dem Pico (oder lokal und per mpremote kopieren):
 ```python
 WIFI_SSID = "Dein_WLAN_Name"
 WIFI_PASSWORD = "Dein_Passwort"
 ```
 
 ### 3. Anzeige-Logik (`hardware/main.py`)
-Das Skript führt folgende Schritte alle 60 Sekunden aus:
+Das Skript führt folgende Schritte alle 30 Sekunden aus:
 1. **Wi-Fi Connect:** Verbindung zum lokalen Netzwerk herstellen.
-2. **Data Fetch:** `GET` Request an die Bunny Edge API mittels `urequests`.
-3. **Parsing:** Extraktion der nächsten 3-4 Abfahrten aus dem JSON-Response.
+2. **Data Fetch:** `GET` Request an die Bunny Edge API mittels `urequests` (mit Retry).
+3. **Parsing:** Extraktion der nächsten 4 Abfahrten aus dem JSON-Response.
 4. **Rendering:**
    - Hintergrundfarbe setzen.
-   - Linie ("61") und Ziel ("Königstr.") zeichnen.
-   - Abfahrtszeit und Verspätung (delay) farblich hervorheben (z.B. Rot bei delay > 0).
-5. **Sleep:** 60 Sekunden warten (Deep Sleep optional zur Stromersparnis).
+   - Header mit Haltestellen und aktueller Uhrzeit (Bonn/Europe/Berlin via NTP).
+   - Abfahrtszeit und Verspätung (+Versp.), Halte (H) und Dauer (D) anzeigen.
+   - Fortschrittsbalken unten und kleines Fetch-Symbol bei Aktualisierung.
+5. **Sleep:** 30 Sekunden warten (Deep Sleep optional zur Stromersparnis).
 
 ## Beispiel-Struktur der Anzeige (320x240)
-- **Header:** "Abfahrten Auerberger Mitte" (Blauer Balken)
-- **Zeile 1:** 12:09 +2min -> Königstr.
-- **Zeile 2:** 12:26 +0min -> Königstr.
-- **Zeile 3:** 12:39 +0min -> Königstr.
-- **Footer:** "Letztes Update: 12:08"
+- **Header:** "Auerberger Mitte -> Koenigstr." + Uhrzeit (Blauer Balken)
+- **Zeile 1:** 20:09  +2 H1 D18m
+- **Zeile 2:** 20:26  +0 H0 D18m
+- **Zeile 3:** 20:39  +0 H1 D20m
+- **Zeile 4:** 20:56  +0 H0 D18m
+- **Legende:** "+Versp. H=Halte D=Dauer"
+- **Footer:** Fortschrittsbalken + Fetch-Symbol
 
 ## Button-Belegung (Optional)
-- **Button A:** Manueller Refresh
-- **Button B:** Display-Helligkeit dimmen
-- **Button X/Y:** Zwischen verschiedenen Haltestellen umschalten (falls API erweitert wird)
+- **Button A/B/X/Y:** Manueller Refresh (sofortiges Nachladen)
+
+## Debugging (macOS)
+
+### 1) Seriell mit mpremote mitlesen
+1. Pico per USB anschließen.
+2. Serielles Device finden:
+```bash
+ls /dev/tty.*
+```
+3. REPL starten (Beispiel):
+```bash
+mpremote connect /dev/tty.usbmodemXXXX repl
+```
+4. Logs ansehen; mit `Ctrl+D` resetten.
+
+### 2) Debug-Logs im Code
+In `hardware/main.py` gibt es den Schalter:
+```python
+DEBUG = True
+```
+Bei aktiviertem Debug werden u.a. geloggt:
+- WLAN-Connect + IP
+- NTP-Sync ok/fehlerhaft
+- API-Fetch ok/fehlerhaft + Retry
+- manueller Refresh
