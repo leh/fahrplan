@@ -4,11 +4,8 @@ BunnySDK.net.http.serve(async (request: Request): Promise<Response> => {
   const url = new URL(request.url);
   
   // Logging
-  const headers = Object.fromEntries(request.headers.entries());
-  console.log(`[DEBUG]: Headers: ${JSON.stringify(headers)}`);
-
-  const clientIp = request.headers.get("bunny-client-ip") || request.headers.get("x-forwarded-for") || "unknown";
-  const requestId = request.headers.get("cdn-request-id") || request.headers.get("x-request-id") || "unknown";
+  const clientIp = request.headers.get("x-real-ip") || request.headers.get("x-forwarded-for") || "unknown";
+  const requestId = request.headers.get("cdn-requestid") || "unknown";
   const logData = {
       timestamp: new Date().toISOString(),
       requestId: requestId,
