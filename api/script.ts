@@ -3,6 +3,19 @@ import * as BunnySDK from "https://esm.sh/@bunny.net/edgescript-sdk@0.11.2";
 BunnySDK.net.http.serve(async (request: Request): Promise<Response> => {
   const url = new URL(request.url);
   
+  // Logging
+  const clientIp = request.headers.get("bunny-client-ip") || request.headers.get("x-forwarded-for") || "unknown";
+  const requestId = request.headers.get("cdn-request-id") || request.headers.get("x-request-id") || "unknown";
+  const logData = {
+      timestamp: new Date().toISOString(),
+      requestId: requestId,
+      ip: clientIp,
+      method: request.method,
+      path: url.pathname,
+      params: Object.fromEntries(url.searchParams)
+  };
+  console.log(`[INFO]: ${JSON.stringify(logData)}`);
+
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -81,6 +94,7 @@ BunnySDK.net.http.serve(async (request: Request): Promise<Response> => {
     });
 
     if (!swbResponse.ok) {
+       console.log(`[ERROR]: Upstream API Error: ${swbResponse.status} for Request ${requestId}`);
        return new Response(JSON.stringify({ error: `Upstream API Error: ${swbResponse.status}` }), {
            status: 502,
            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -110,6 +124,7 @@ BunnySDK.net.http.serve(async (request: Request): Promise<Response> => {
         }
     }
 
+    console.log(`[INFO]: Success: Found ${results.length} departures for Request ${requestId}`);
     return new Response(JSON.stringify({
         meta: { requested_date_utc: searchDate.toISOString(), limit: limit },
         departures: results
